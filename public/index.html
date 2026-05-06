@@ -1,66 +1,56 @@
-<!doctype html>
-<html>
-	<head>
-		<meta charset="utf-8" />
-		<meta
-			name="viewport"
-			content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
-		/>
-		<title>Scramjet</title>
+"use strict";
 
-		<link rel="shortcut icon" content="favicon.webp" />
-	
-		<script src="/scram/scramjet.all.js"></script>
-		<script src="/baremux/index.js"></script>
-		
-		<link rel="stylesheet" href="index.css" />
-		<script src="register-sw.js" defer></script>
-		<script src="search.js" defer></script>
-		<script src="index.js" defer></script>
-	</head>
+/** * @type {HTMLFormElement} */
+const form = document.getElementById("sj-form");
+/** * @type {HTMLInputElement} */
+const address = document.getElementById("sj-address");
+/** * @type {HTMLInputElement} */
+const searchEngine = document.getElementById("sj-search-engine");
+/** * @type {HTMLParagraphElement} */
+const error = document.getElementById("sj-error");
+/** * @type {HTMLPreElement} */
+const errorCode = document.getElementById("sj-error-code");
 
-	<body>
-		<div title="Scramjet Logo" class="flex-center logo-wrapper header-center">
-			<img class="logo" src="sj.png" alt="Scramjet" />
-			<h1>Scramjet | MW</h1>
-		</div>
-		<div class="flex-center desc left-margin">
-			<p>
-				Scramjet is an experimental interception based web proxy designed to
-				evade internet censorship, bypass arbitrary web browser restrictions and
-				innovate web proxy technologies.
-			</p>
-		</div>
+const { ScramjetController } = $scramjetLoadController();
+const scramjet = new ScramjetController({
+  files: {
+    // Updated with CDN links to bypass 404s
+    wasm: "https://jsdelivr.net",
+    all: "https://jsdelivr.net",
+    sync: "https://jsdelivr.net",
+  },
+});
 
-		<form id="sj-form" class="flex-center">
-			<input
-				id="sj-search-engine"
-				value="https://www.google.com/search?q=%s"
-				type="hidden"
-			/>
-			<input id="sj-address" type="text" placeholder="Search the web freely" />
-		</form>
-		<div class="desc left-margin">
-			<p id="sj-error"></p>
-			<pre id="sj-error-code"></pre>
-		</div>
-		<footer>
-			<div>
-				<a
-					title="The Mercury Workshop GitHub organization"
-					href="https://github.com/MercuryWorkshop"
-					>Mercury Workshop</a
-				>
-				<a
-					title="The example demo app for Scramjet"
-					href="https://github.com/MercuryWorkshop/Scramjet-Demo"
-					>GitHub</a
-				>
-				<a title="License information" href="credits.html">Credits</a>
-			</div>
-			<div>
-				<span>Scramjet &copy; MW 2025</span>
-			</div>
-		</footer>
-	</body>
-</html>
+scramjet.init();
+
+// Updated to use the CDN version of the worker
+const connection = new BareMux.BareMuxConnection("https://jsdelivr.net");
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    await registerSW();
+  } catch (err) {
+    error.textContent = "Failed to register service worker.";
+    errorCode.textContent = err.toString();
+    throw err;
+  }
+
+  const url = search(address.value, searchEngine.value);
+
+  // Your Render backend
+  let wispUrl = "wss://://onrender.com";
+
+  if ((await connection.getTransport()) !== "/libcurl/index.mjs") {
+    await connection.setTransport("/libcurl/index.mjs", [
+      {
+        websocket: wispUrl,
+      },
+    ]);
+  }
+
+  const frame = scramjet.createFrame();
+  frame.frame.id = "sj-frame";
+  document.body.appendChild(frame.frame);
+  frame.go(url);
+});
